@@ -2,6 +2,8 @@ package com.luo.usercenter.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.luo.usercenter.common.ErrorCode;
 import com.luo.usercenter.exception.BusinessException;
 import com.luo.usercenter.mapper.UserMapper;
@@ -10,13 +12,15 @@ import com.luo.usercenter.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.DigestUtils;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.luo.usercenter.constant.UserConstant.*;
 
@@ -95,21 +99,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     public User userLogin(String userAccount, String userPassword, HttpServletRequest request) {
         // 非空判断
         if (StringUtils.isAnyBlank(userAccount, userPassword)) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR,"参数为空");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
         }
         // 账号长度不少于4位
         if (userAccount.length() < ACCOUNT_MIN_LENGTH) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR,"账号长度过短");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号长度过短");
         }
         // 密码长度不少于8位
         if (userPassword.length() < PASSWORD_MIN_LENGTH) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR,"密码长度过短");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "密码长度过短");
         }
         // 账号不包含特殊字符
         String validPattern = "[`~!@#$%^&*()+=|{}':;',\\\\[\\\\].<>/?~！@#￥%……&*（）——+|{}【】‘；：”“’。，、？]";
         Matcher matcher = Pattern.compile(validPattern).matcher(userAccount);
         if (matcher.find()) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR,"账号包含特殊字符");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号包含特殊字符");
         }
         // 校验密码
         String encryptPassword = DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
@@ -136,6 +140,50 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return 1;
     }
 
+
+    @Override
+    public List<User> searchUsersByTags(List<String> tagList) {
+        if (CollectionUtils.isEmpty(tagList)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        // 查询所有用户
+        List<User> users = userMapper.selectList(queryWrapper);
+        Gson gson = new Gson();
+        // 使用filter过滤包含标签列表的用户
+        return users.stream().filter(user -> {
+            // 标签列表为JSON格式
+            String tagsStr = user.getTags();
+            // 判空
+            if (StringUtils.isBlank(tagsStr)) {
+                return false;
+            }
+            // 使用Gson将JSON反序列化为Java对象
+            Set<String> tempTagSet = gson.fromJson(tagsStr, new TypeToken<Set<String>>() {
+            }.getType());
+            tempTagSet = Optional.ofNullable(tempTagSet).orElse(new HashSet<>());
+            return tempTagSet.containsAll(tagList);
+        }).map(this::getSafetyUser).collect(Collectors.toList());
+    }
+
+    @Deprecated
+    public List<User> searchUsersByTagsBySQL(List<String> tagList) {
+        if (CollectionUtils.isEmpty(tagList)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        // 从数据库中匹配
+        // 循环添加所有查询标签
+        for (String tagName : tagList) {
+            queryWrapper.like("tags", tagName);
+        }
+        List<User> userList = userMapper.selectList(queryWrapper);
+        // this::getSafetyUser --> user -> { getSafetyUser(user); }
+        // 使用Java 8特性 stream流
+        return userList.stream().map(this::getSafetyUser)
+                .collect(Collectors.toList());
+    }
+
     @Override
     public User getSafetyUser(User originUser) {
         if (originUser == null) {
@@ -154,6 +202,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         safetyUser.setPhone(originUser.getPhone());
         safetyUser.setCreateTime(originUser.getCreateTime());
         safetyUser.setUserRole(originUser.getUserRole());
+        safetyUser.setTags(originUser.getTags());
         return safetyUser;
     }
 

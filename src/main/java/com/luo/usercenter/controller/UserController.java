@@ -9,7 +9,10 @@ import com.luo.usercenter.model.domain.User;
 import com.luo.usercenter.model.domain.request.UserLoginRequest;
 import com.luo.usercenter.model.domain.request.UserRegisterRequest;
 import com.luo.usercenter.service.UserService;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -25,12 +28,14 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping("/user")
+@Api("用户管理")
 public class UserController {
 
     @Resource
     private UserService userService;
 
     @PostMapping("/register")
+    @ApiOperation(value = "用户注册")
     public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
         if (userRegisterRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
@@ -47,6 +52,7 @@ public class UserController {
     }
 
     @PostMapping("/login")
+    @ApiOperation(value = "用户登录")
     public BaseResponse<User> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
         if (userLoginRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
@@ -61,6 +67,7 @@ public class UserController {
     }
 
     @PostMapping("/logout")
+    @ApiOperation(value = "用户注销")
     public BaseResponse<Integer> userLogout(HttpServletRequest request) {
         if (request == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
@@ -70,6 +77,7 @@ public class UserController {
     }
 
     @GetMapping("/current")
+    @ApiOperation(value = "获取当前登录用户")
     public BaseResponse<User> getCurrentUser(HttpServletRequest request) {
         User user = (User) request.getSession().getAttribute(UserConstant.USER_LOGIN_STATUS);
         if (user == null) {
@@ -82,6 +90,7 @@ public class UserController {
     }
 
     @GetMapping("/search")
+    @ApiOperation(value = "搜索用户", notes = "根据用户名搜索，无传入值搜索所有用户")
     public BaseResponse<List<User>> searchUser(String username, HttpServletRequest request) {
         //鉴权
         if (!ifAdmin(request)) {
@@ -94,6 +103,7 @@ public class UserController {
     }
 
     @PostMapping("/delete")
+    @ApiOperation(value = "删除用户", notes = "需要有管理员权限")
     public BaseResponse<Boolean> deleteUser(@RequestBody long id, HttpServletRequest request) {
         if (!ifAdmin(request)) {
             throw new BusinessException(ErrorCode.NOT_AUTH, "用户无权限查询");
@@ -103,6 +113,16 @@ public class UserController {
         }
         boolean result = userService.deleteUser(id);
         return ResultUtils.success(result);
+    }
+
+    @PostMapping("/searchUsersByTags")
+    @ApiOperation(value = "根据标签搜索用户")
+    public BaseResponse<List<User>> searchUsersByTags(@RequestBody List<String> tagList) {
+        if (CollectionUtils.isEmpty(tagList)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        List<User> userList = userService.searchUsersByTags(tagList);
+        return ResultUtils.success(userList);
     }
 
     /**

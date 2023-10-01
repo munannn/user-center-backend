@@ -1,11 +1,16 @@
 package com.luo.usercenter.service;
 
 import com.luo.usercenter.model.domain.User;
+import org.junit.Assert;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import javax.annotation.Resource;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -65,5 +70,13 @@ class UserServiceTest {
         userAccount = "yupi";
         result = userService.userRegister(userAccount, planetCode, userPassword, checkPassword);
         Assertions.assertTrue(result > 0);
+    }
+
+    @Test
+    void searchUserByTags() {
+        List<String> tagList = Arrays.asList("Java","C++");
+        List<User> userList = userService.searchUsersByTags(tagList);
+        Assertions.assertNotNull(userList);
+        System.out.println(userList);
     }
 }

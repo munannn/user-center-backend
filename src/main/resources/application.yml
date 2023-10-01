@@ -8,6 +8,13 @@ spring:
     url: jdbc:mysql://localhost:3306/luobo
     username: root
     password: 123456
+  mvc:
+    pathmatch:
+      # 将SpringMVC的匹配URL路径的策略改为ant_path_matcher 与Swagger保持一致
+      matching-strategy: ant_path_matcher
+  profiles:
+    active: dev
+
 
 server:
   port: 8080
@@ -17,6 +24,8 @@ server:
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: false
+    # 开启sql全局日志
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
       logic-delete-field: isDelete # 全局逻辑删除的实体字段名(since 3.3.0,配置后可以忽略不配置步骤2)

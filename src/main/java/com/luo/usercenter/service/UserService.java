@@ -29,7 +29,7 @@ public interface UserService extends IService<User> {
      * @param userAccount 账号
      * @param userPassword 密码
      * @param request 请求对象
-     * @return 脱敏后的用户信息
+     * @return 脱敏后的用户
      */
     User userLogin(String userAccount, String userPassword, HttpServletRequest request);
 
@@ -39,6 +39,13 @@ public interface UserService extends IService<User> {
      * @return 响应值
      */
     int userLogout(HttpServletRequest request);
+
+    /**
+     * 根据标签查找用户
+     * @param tagList 标签列表
+     * @return 包含标签列表的用户列表
+     */
+    List<User> searchUsersByTags(List<String> tagList);
 
     /**
      * 用户脱敏
